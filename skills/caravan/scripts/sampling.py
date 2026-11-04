@@ -5,7 +5,7 @@ import json
 import execution
 
 VERSION = 'source-month-project-v2'
-WINDOW_VERSION = 'bounded-context-v5'
+WINDOW_VERSION = 'bounded-context-v6'
 
 
 def digest(value):
@@ -77,19 +77,33 @@ def window(session, char_limit, rubric, seed='caravan-v2'):
     anchor = candidates[int(digest([seed, session['key'], 'window']), 16) % len(candidates)]
     # Retain the preceding response so "then fix it" is not detached from context.
     start = anchor-1 if anchor and messages[anchor-1]['role']=='assistant' else anchor
-    chosen = messages[start:start+5]
-    facts = execution.excerpt(session.get('execution'), chosen[0]['date'], chosen[-1]['date'],
-                              min(600, char_limit // 3))
+    windows = [list(range(start, min(start + 5, len(messages))))]
+    # A second scene must be separated by at least one omitted message. It is
+    # selected by position, never by content or a desired behavior.
+    alternatives = []
+    for candidate in candidates:
+        other = candidate - 1 if candidate and messages[candidate-1]['role'] == 'assistant' else candidate
+        indices = list(range(other, min(other + 5, len(messages))))
+        if indices and (indices[-1] + 1 < windows[0][0] or windows[0][-1] + 1 < indices[0]):
+            alternatives.append(indices)
+    if alternatives:
+        windows.append(alternatives[int(digest([seed, session['key'], 'second-scene']), 16) % len(alternatives)])
+    windows.sort(key=lambda indices: indices[0])
+    chosen = [messages[i] for indices in windows for i in indices]
+    # Do not pull execution events from the unselected gap between scenes.
+    facts = execution.excerpt(session.get('execution'), messages[windows[0][0]]['date'],
+                              messages[windows[0][-1]]['date'], min(600, char_limit // 3))
     remaining = max(0, char_limit - execution.size(facts))
     lengths = [len(m['text']) for m in chosen]
     amounts = _allocate(lengths, remaining)
+    scene_by_id = {messages[i]['id']: n + 1 for n, indices in enumerate(windows) for i in indices}
     excerpts = [dict(id=m['id'], role=m['role'], origin=m.get('origin','message'), text=m['text'][:amount],
-                     truncated=amount < len(m['text'])) for m, amount in zip(chosen, amounts)]
+                     truncated=amount < len(m['text']), scene=scene_by_id[m['id']]) for m, amount in zip(chosen, amounts)]
     quality = dict(messages=len(excerpts), truncated_messages=sum(m['truncated'] for m in excerpts),
                    complete_messages=sum(not m['truncated'] for m in excerpts),
-                   has_human_followup=any(a['role']=='user' and b['role']=='assistant' and c['role']=='user'
+                   has_human_followup=any(a['scene']==b['scene']==c['scene'] and a['role']=='user' and b['role']=='assistant' and c['role']=='user'
                        for i,a in enumerate(excerpts) for j,b in enumerate(excerpts[i+1:],i+1) for c in excerpts[j+1:]),
-                   position='start' if start==0 else 'end' if start+5>=len(messages) else 'middle')
+                   scenes=len(windows), position='multiple' if len(windows)>1 else 'start' if start==0 else 'end' if start+5>=len(messages) else 'middle')
     return dict(session=session['key'], source=session['source'], messages=excerpts, execution=facts,
                 omitted_messages=len(messages)-len(excerpts), fingerprint=session['fingerprint'],
                 quality=quality,

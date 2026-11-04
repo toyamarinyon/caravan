@@ -126,6 +126,11 @@ def validate(review, packet):
         if any(r not in messages for r in claim['refs']): raise ValueError('Unknown decision evidence')
         if claim['status'] in ('stated', 'observed') and any(messages[r]['role'] != 'user' for r in claim['refs']):
             raise ValueError('Chosen alternative and stated condition require human evidence')
+    scene_refs = [r for field in ('situation','human_action','ai_role','response') for r in item[field]['refs']]
+    scene_refs += [r for field in ('condition','alternative') for r in decision[field]['refs']]
+    scene_refs += [r for step in decision['steps'] for r in step['refs']]
+    if len({messages[r].get('scene',1) for r in scene_refs}) > 1:
+        raise ValueError('A use case cannot join separated scenes')
     previous = -1
     for step in decision['steps']:
         if any(r not in messages or messages[r]['role'] != 'user' for r in step['refs']):

@@ -79,3 +79,15 @@ class SamplingTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+class MultiSceneTests(unittest.TestCase):
+    def test_separated_scenes_are_one_bounded_packet(self):
+        row=session('two-scenes',lengths=(100,)*30)
+        packet=sampling.window(row,2000,semantic.RUBRIC)
+        groups={m['scene'] for m in packet['messages']}
+        self.assertEqual(groups,{1,2})
+        indices=[[int(m['id'][1:]) for m in packet['messages'] if m['scene']==scene] for scene in sorted(groups)]
+        self.assertGreater(indices[1][0]-indices[0][-1],1)
+        self.assertLessEqual(semantic.packet_size(packet),2000)
+        self.assertTrue(all(m['text'] for m in packet['messages']))
+        self.assertEqual(len(sampling.pack([row],2000,semantic.RUBRIC)),1)

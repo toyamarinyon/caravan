@@ -71,7 +71,7 @@ def validate(review,packet):
     if set(review.get('axes',{}))!={a['id'] for a in AXES}:raise ValueError('All four axes required')
     for axis in AXES:
         item=review['axes'][axis['id']]
-        if item.get('status') not in ('left','right','both','not_observed','uncertain'):raise ValueError('Invalid axis status')
+        if item.get('status') not in ('left','right','both','not_observed','uncertain','not_applicable'):raise ValueError('Invalid axis status')
         observed=item['status'] in ('left','right','both')
         text(item.get('reason'),300);evidence(item.get('evidence'),observed)
         dims=item.get('dimensions',[])
@@ -159,7 +159,7 @@ def material_checks(portrait):
     representativeness, or statistical confidence. Never changes classification.
     """
     rules=portrait.get('rules')
-    if portrait.get('schema')!=SCHEMA or not rules or not all(k in rules for k in ('min_sessions','dominance')):
+    if portrait.get('schema') not in ('portrait-v1', SCHEMA) or not rules or not all(k in rules for k in ('min_sessions','dominance')):
         return {}
     def state(counts):
         n=sum(counts.get(k,0) for k in ('left','right','both'))
@@ -196,6 +196,16 @@ def finalize(output,reviews_path=None):
         reviews.append(validate(review,packet))
     for packet,review in zip(packets,reviews):write(output/'cache'/('portrait-'+cache_key(packet)+'.json'),review)
     report['portrait']=aggregate(packets,reviews)
+    if report.get('purpose_summary') is not None:
+        import semantic
+        purposes=[{p['id'] for p in semantic.validate_review(read(output/'cache'/(packet['cache_key']+'.json')),packet)['purposes']} for packet in packets]
+        def subset(indices):
+            return [dict(id=a['id'],state=a['state'],observed_sessions=a['observed_sessions'])
+                    for a in aggregate([packets[i] for i in indices],[reviews[i] for i in indices])['axes']]
+        groups={purpose:subset([i for i,ids in enumerate(purposes) if purpose in ids]) for purpose in semantic.PURPOSES}
+        kept=[i for i,ids in enumerate(purposes) if ids != {'routine'} and 'unknown' not in ids]
+        report['portrait']['purpose_context']=dict(groups=groups, excluding_routine_only_and_unknown=subset(kept),
+                                                    retained_sessions=len(kept))
     write(output/'report.json',report)
     import diagnose,semantic
     write(output/'share-profile.json',diagnose.make_share(report))

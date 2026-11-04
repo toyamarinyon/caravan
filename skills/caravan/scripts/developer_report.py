@@ -37,7 +37,7 @@ def render(report, rubric, extractor, modes):
     parts['PORTRAIT']=('<p>38観点の件数を機械的に二分するのではなく、同じ抜粋を読んだAIが人の根拠発言と関連する観点を添えて4軸を要約します。'
         'これはMBTIの心理軸ではなく、今回の作業での選択を整理する仮の軸です。相互独立性・再現性・閾値は未検証です。</p>'
         +table(['軸','左側','右側','読み取り条件'],[[h(a['title']),h(a['left']['code']+' '+a['left']['label']),h(a['right']['code']+' '+a['right']['label']),h(a['hint'])] for a in (summary['axes'] if summary else portrait.AXES)])
-        +f'<p>各会話で left / right / both / not_observed / uncertain を記録。観測した1会話を1票とし、両方は左右に0.5票ずつ配分します。未観測・不明は分母から除外。'
+        +f'<p>各会話で left / right / both / not_observed / uncertain / not_applicable を記録。観測した1会話を1票とし、両方は左右に0.5票ずつ配分します。未観測・不明・該当場面なしは分母から除外。'
         f'各軸{portrait_rules["min_sessions"]}会話未満は材料不足。片側への配分が{100*portrait_rules["dominance"]:g}%以上ならその側、それ以外は中間として両候補を残します。4軸がそろって初めて16通りからタイプ候補を出します。</p>'
         '<p>口調7種類は独立して観察し、共存可能。直接指示を攻撃性に、肯定を感謝に読み替えません。発見メモは抜粋ごとに最大2件で、0件も正常です。'
         '既存観点の具体例と、枠外の候補を区別します。根拠ID・匿名化した観察・本人への問いを必須とし、効果や世界的な新規性は認定しません。口調と発見メモはタイプ計算に入りません。</p>'
@@ -67,6 +67,13 @@ def render(report, rubric, extractor, modes):
                         f'{report["messages"]}人発言。集計は保存済みの結果を使用し、AIによる再評価は行っていません。</p>'
                         '<p>軸の説明・抽出設定・閾値は現在の実装から生成。タイプの重みは診断結果に保存された定義を使用します。'
                         '旧18観点の分類閾値は過去のレポートに保存されていないため、実装変更時の再現性に注意してください。4軸は保存済みの閾値を優先します。</p>')
+    if report.get('purpose_summary') is not None:
+        labels={'routine':'定型操作の依頼','research':'調査・説明','deliberation':'検討・相談','production':'制作・変更','mixed':'混在','unknown':'不明'}
+        parts['SUMMARY'] += '<h3>利用目的と観点の併存</h3><p>同じ会話内の目的と観察の併存であり、目的が行動を生んだという意味ではありません。複数目的は重複し、会話の中の別の場面である可能性もあります。評価可能な場面のみを分母にします。件数が少ない比較は不安定です。</p>'
+        for group in report['purpose_summary']:
+            parts['SUMMARY'] += '<details><summary>'+h(labels[group['id']])+'：'+str(group['sessions'])+'会話</summary>' + table(['観点','観測 / 評価可能'], [[h(observed.get(item['id'],{}).get('title',item['id'])),str(item['observed'])+' / '+str(item['assessed'])] for item in group['perspectives']]) + '</details>'
+    count_label='根拠のある会話' if report['method']=='semantic-38-v4' else '人の根拠発言'
+    parts['COUNT_EXPLANATION']=('<b>c</b>＝観測の根拠がある会話数（1会話最大1）、' if report['method']=='semantic-38-v4' else '<b>c</b>＝観測の根拠となる人の発言数、')
     cards = []
     metric_rows = []
     for i, p in enumerate(definitions, 1):
@@ -76,7 +83,7 @@ def render(report, rubric, extractor, modes):
         count, sessions = m.get('count', 0), m.get('sessions', 0)
         rate = '未評価' if unassessed else f'{100*sessions/assessed:.1f}%' if assessed else '評価可能な場面なし'
         observation = '今回：未評価。0件・未観測として扱いません。' if unassessed else f'今回：{sessions} / {assessed}評価可能な会話 · {rate}'
-        detail_counts = '' if unassessed else f'<p class="small">人の根拠発言 {count}件 ／ 不明 {m.get("uncertain_sessions",0)}会話 ／ 該当場面なし {m.get("not_applicable_sessions",0)}会話</p>'
+        detail_counts = '' if unassessed else f'<p class="small">{count_label} {count}件 ／ 不明 {m.get("uncertain_sessions",0)}会話 ／ 該当場面なし {m.get("not_applicable_sessions",0)}会話</p>'
         forms = ''
         if p.get('forms'):
             actual = {f['id']: f['sessions'] for f in m.get('observed_forms',[])}
@@ -97,7 +104,7 @@ def render(report, rubric, extractor, modes):
                             '—' if unassessed else str(m.get('not_applicable_sessions',0)), rate,
                             '分類には未使用' if p.get('kind') in ('process','tooling') else f'{vector.get(p["id"],0):.4f}', '該当' if p['id'] in repeated else '—'])
     parts['AXES'] = ''.join(cards)
-    parts['METRICS'] = table(['観点', 'c：根拠発言', 'o：観測会話', 'a：評価可能', 'u：不明', '該当場面なし', '観測割合', 'v：分類用の値', '繰り返し観測'], metric_rows)
+    parts['METRICS'] = table(['観点', 'c：'+count_label, 'o：観測会話', 'a：評価可能', 'u：不明', '該当場面なし', '観測割合', 'v：分類用の値', '繰り返し観測'], metric_rows)
     parts['MODES'] = table(['モード', '最大会話数', '本文＋実行情報の文字数上限'],
                           [[h(name), str(n), f'{chars:,}'] for name, (n, chars) in modes.items()])
     coverage=report.get('sampling',{}).get('source_coverage')
@@ -121,7 +128,7 @@ def render(report, rubric, extractor, modes):
             f'人→AI→人の往復があるのは {sample["followup_windows"]}会話です。</p>')
     parts['COVERAGE']+='<p>普段の利用比率や全履歴の代表性は保証しません。途中切れがなくても前後の文脈や添付資料は省略されています。1会話を外す確認の内訳は「4軸・口調・発見メモ」を参照してください。AIの読み違いや抽出の偏りを検証するものではありません。</p></div>'
     labels = [
-        ('evidence_smoothing', '少数根拠を補正する定数'), ('repeated_messages', '繰り返し観測：根拠発言数の下限'),
+        ('evidence_smoothing', '少数根拠を補正する定数'), ('repeated_messages', '繰り返し観測：'+count_label+'数の下限'),
         ('repeated_sessions', '繰り返し観測：観測会話数の下限'), ('min_messages', '材料充足：抽出内の人発言数の下限'),
         ('min_sessions', '材料充足：分析会話数の下限'), ('min_repeated_dimensions', '材料充足：繰り返し観測した軸数の下限'),
         ('min_supported_dimensions', 'タイプ候補：重みを持つ軸のうち繰り返し観測した軸数の下限'),

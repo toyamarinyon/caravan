@@ -96,7 +96,7 @@ class ExecutionTests(unittest.TestCase):
     def test_tooling_observation_requires_human_evidence_even_with_events(self):
         packet=dict(cache_key='fixture',messages=[dict(id='m1',role='user'),dict(id='m2',role='assistant')],
                     execution=dict(events=[dict(id='e1')]))
-        review=dict(schema=s.RUBRIC,cache_key='fixture',reviewer='SYNTHETIC TEST',
+        review=dict(schema=s.RUBRIC,cache_key='fixture',reviewer='SYNTHETIC TEST', purposes=[dict(id='unknown',evidence=[],reason='Synthetic fixture.')],
                     ratings={d:dict(status='uncertain',evidence=[],reason='Synthetic context insufficient.') for d in s.IDS})
         rating=dict(status='observed',evidence=['m1'],reason='Synthetic instruction explicitly chooses a model.',
                     forms=[dict(id='fixed',evidence=['m1'])],event_evidence=['e1'])

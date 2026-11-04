@@ -36,7 +36,7 @@ class SemanticTests(unittest.TestCase):
             return s.prepare(self.home,self.out,consent=True,**kwargs)
 
     def review(self,packet):
-        return dict(schema=s.RUBRIC,cache_key=packet['cache_key'],reviewer='test fixture, not a real model review',
+        return dict(schema=s.RUBRIC,cache_key=packet['cache_key'],reviewer='test fixture, not a real model review', purposes=[dict(id='unknown',evidence=[],reason='Synthetic fixture.')],
             ratings={id:dict(status='not_observed',evidence=[],reason='Test-only synthetic review') for id in s.IDS})
 
     def test_consent_precedes_read_and_write(self):
@@ -167,8 +167,7 @@ class SemanticTests(unittest.TestCase):
         path.write_text('\n'.join(json.dumps(row) for row in rows),encoding='utf-8')
         m=self.prepare(mode='light')
         row=next(row for row in m['source_coverage'] if row['source']=='claude')
-        self.assertEqual((row['available_sessions'],row['eligible_sessions'],row['selected_sessions']),(1,0,0))
-        self.assertIn('会話量',row['reason'])
+        self.assertEqual((row['available_sessions'],row['eligible_sessions'],row['selected_sessions']),(1,1,1))
         for p in m['selected']:s.write(self.out/'cache'/f"{p['cache_key']}.json",self.review(p))
         with contextlib.redirect_stdout(io.StringIO()):report=s.finalize(self.out)
         self.assertEqual(report['sampling']['source_coverage'],m['source_coverage'])

@@ -11,7 +11,7 @@ def catalog():
 
 
 def presentation(report):
-    if report.get('portrait', {}).get('schema') != 'portrait-v1':
+    if report.get('portrait', {}).get('schema') not in ('portrait-v1', 'portrait-v2'):
         return None
     types = []
     for item in catalog():

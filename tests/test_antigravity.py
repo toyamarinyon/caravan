@@ -99,7 +99,7 @@ class AntigravityTests(unittest.TestCase):
     def test_dates_limits_cache_and_appended_turn(self):
         path, rows = self.fixture()
         packet = self.prepare(max_chars=1000)['selected'][0]
-        review = dict(schema=s.RUBRIC, cache_key=packet['cache_key'], reviewer='synthetic test only',
+        review = dict(schema=s.RUBRIC, cache_key=packet['cache_key'], reviewer='synthetic test only', purposes=[dict(id='unknown',evidence=[],reason='Synthetic fixture.')],
                       ratings={key: dict(status='uncertain', evidence=[], reason='test') for key in s.IDS})
         s.write(self.out / 'cache' / (packet['cache_key'] + '.json'), review)
         self.assertEqual(self.prepare(max_chars=1000)['cache_hits'], 1)
@@ -126,7 +126,7 @@ class AntigravityTests(unittest.TestCase):
     def test_final_report_accepts_source_without_leaking_original(self):
         self.fixture()
         packet = self.prepare()['selected'][0]
-        review = dict(schema=s.RUBRIC, cache_key=packet['cache_key'], reviewer='synthetic test only',
+        review = dict(schema=s.RUBRIC, cache_key=packet['cache_key'], reviewer='synthetic test only', purposes=[dict(id='unknown',evidence=[],reason='Synthetic fixture.')],
                       ratings={key: dict(status='uncertain', evidence=[], reason='test') for key in s.IDS})
         s.write(self.out / 'reviews.json', [review])
         with contextlib.redirect_stdout(io.StringIO()):

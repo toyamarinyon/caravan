@@ -18,11 +18,11 @@ function validateBackup(value){
  const fail=()=>{throw Error('このファイルからは結果を復元できません。「詳しい結果をJSONで保存」（旧版では「本人用バックアップを保存」）で保存したファイルを選んでください。共有用プロフィールは比較用のため、復元には使えません。');};
  if(!value||value.schema!=='caravan-private-backup-v1'||Object.keys(value).sort().join(',')!=='execution_audit,report,schema')fail();
  const r=value.report;
- if(!r||!['semantic-18-v1','semantic-26-v2','semantic-38-v3'].includes(r.method))fail();
+ if(!r||!['semantic-18-v1','semantic-26-v2','semantic-38-v3','semantic-38-v4'].includes(r.method))fail();
  const ids=r.perspectives?.map(p=>p?.id),known=new Set(initialView.viewer_definitions.map(p=>p.id));
  if(!ids||ids.length<18||ids.length>38||new Set(ids).size!==ids.length||ids.some(id=>!known.has(id)))fail();
  if(['sessions','messages','days'].some(k=>!Number.isInteger(r[k])||r[k]<(k==='days'?1:0))||typeof r.generated_at!=='string')fail();
- if(r.portrait&&r.portrait.schema!=='portrait-v1')fail();
+ if(r.portrait&&!['portrait-v1','portrait-v2'].includes(r.portrait.schema))fail();
  if('practices' in r)validatePractices(r.practices,r,fail);
  if(['journey','rendered_at','private_backup','execution_audit','material_checks'].some(k=>k in r))fail();
  if(value.execution_audit!==null&&value.execution_audit?.schema!=='execution-events-v1')fail();
@@ -67,7 +67,7 @@ function validatePractices(value,report,fail){
 }
 function currentBackup(value){
  const result=JSON.parse(JSON.stringify(value)),r=result.report;
- if(r.portrait?.schema==='portrait-v1'){
+ if(['portrait-v1','portrait-v2'].includes(r.portrait?.schema)){
   for(const key of ['type_code','type_name','profile','type_status','candidate_codes','alternatives','type_catalog','repeated_dimensions','evidence_ready'])delete r[key];
   const names=Object.fromEntries(initialView.viewer_assets.types.map(t=>[t.code,t])),style=r.portrait.classification;
   for(const item of [...(style.type_catalog||[]),...(style.alternatives||[]),...(style.profile?[style.profile]:[])]){

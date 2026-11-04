@@ -54,6 +54,17 @@ class BackupTests(unittest.TestCase):
         legacy=self.report(); del legacy['portrait']
         self.assertEqual(backup.bundle(legacy)['report'],legacy)
 
+    def test_old_semantic_v3_portrait_v1_backup_and_render(self):
+        report=self.report(); report['method']='semantic-38-v3'; report['portrait']['schema']='portrait-v1'
+        with temporary_workspace() as directory, contextlib.redirect_stdout(io.StringIO()):
+            root=Path(directory); path=root/'legacy.json'; semantic.write(path,backup.bundle(report))
+            dest=root/'result'; backup.restore(path,dest)
+            restored=json.loads((dest/'report.json').read_text(encoding='utf-8'))
+            self.assertEqual(restored['method'],'semantic-38-v3')
+            self.assertEqual(restored['portrait']['schema'],'portrait-v1')
+            self.assertTrue((dest/'index.html').exists())
+            self.assertIn('portrait-v1', (dest/'share-profile.json').read_text())
+
     def test_reject_invalid_before_touching_existing_result(self):
         value=backup.bundle(self.report())
         for edit in (lambda v:v.update(schema='future'),lambda v:v['report'].update(method='future'),

@@ -108,19 +108,19 @@ class KimiTests(unittest.TestCase):
         index.write_text('null\n[]\n{"partial":', encoding='utf-8')
         self.assertEqual(self.prepare()['diagnostics']['kimi_invalid_index_rows'], 3)
 
-    def test_single_turn_is_detected_but_not_eligible(self):
+    def test_single_turn_is_eligible(self):
         self.fixture(rows=[self.row('user','u'),self.row('assistant','a')])
         manifest = self.prepare()
         coverage = next(c for c in manifest['source_coverage'] if c['source']=='kimi')
         self.assertEqual(coverage['available_sessions'], 1)
-        self.assertEqual(coverage['eligible_sessions'], 0)
+        self.assertEqual(coverage['eligible_sessions'], 1)
 
     def test_budget_cache_render_and_private_share_boundary(self):
         path, rows = self.fixture()
         manifest = self.prepare(max_chars=1000)
         self.assertLessEqual(manifest['read_chars'], 1000)
         packet = manifest['selected'][0]
-        review = dict(schema=s.RUBRIC, cache_key=packet['cache_key'], reviewer='synthetic only',
+        review = dict(schema=s.RUBRIC, cache_key=packet['cache_key'], reviewer='synthetic only', purposes=[dict(id='unknown',evidence=[],reason='Synthetic fixture.')],
                       ratings={key:dict(status='uncertain',evidence=[],reason='test') for key in s.IDS})
         s.write(self.out / 'reviews.json', [review])
         with contextlib.redirect_stdout(io.StringIO()):

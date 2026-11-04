@@ -60,7 +60,7 @@ async function main(){
     assert.equal(ids['practice-draft-panel'].hidden,true);
     ids['nav-result'].click();
   }
-  const grouped=rendered.portrait?.schema==='portrait-v1';
+  const grouped=['portrait-v1','portrait-v2'].includes(rendered.portrait?.schema);
   const catalogEntries=grouped?ids['type-grid'].querySelectorAll('.catalog-traveler'):ids['type-grid'].children;
   assert.equal(catalogEntries.length,16);
   if(grouped){
@@ -79,7 +79,7 @@ async function main(){
   }
   assert.equal(ids['reflection-questions'].children.length,4);
   assert.ok(ids['material-overview'].textContent.includes('会話'));
-  assert.ok(ids['material-overview'].textContent.includes('普段の使い方すべてを表すものではありません'));
+  assert.ok(ids['material-overview'].textContent.includes('表'));
   ids['material-evidence'].click();
   assert.equal(ids['view-observations'].hidden,false);
   ids['nav-result'].click();

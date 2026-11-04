@@ -46,6 +46,14 @@ class PortraitTests(unittest.TestCase):
         small=p.aggregate(packets[:2],[self.review(x) for x in packets[:2]])
         self.assertEqual(small['classification']['type_code'],'????')
 
+    def test_no_opportunity_does_not_cast_a_vote(self):
+        packets=[self.packet(i) for i in range(4)]
+        reviews=[self.review(x, 'not_applicable' if i==0 else 'left') for i,x in enumerate(packets)]
+        p.validate(reviews[0],packets[0])
+        result=p.aggregate(packets,reviews)
+        self.assertTrue(all(a['observed_sessions']==3 and a['state']=='left' for a in result['axes']))
+        self.assertTrue(all(a['counts']['not_applicable']==1 for a in result['axes']))
+
     def test_tone_and_discoveries_need_human_refs_and_never_change_type(self):
         packet=self.packet();r=self.review(packet)
         note=dict(key='preserve_branch',title='Synthetic note',observation='Private paraphrase to test export boundaries.',
@@ -102,6 +110,26 @@ class PortraitTests(unittest.TestCase):
         self.assertEqual(len(notes[0]['findings']),2)
         self.assertEqual({f['session'] for f in notes[0]['findings']},{x['session'] for x in packets})
 
+    def test_purpose_subsets_keep_one_vote_per_session_and_unknown_out_of_sensitivity(self):
+        from test_developer_report import DeveloperReportTests
+        packets=[self.packet(i) for i in range(5)]
+        reviews=[self.review(packet,'right' if i==0 else 'left') for i,packet in enumerate(packets)]
+        purposes=['routine','production','production','production','unknown']
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
+            out=Path(directory); report=DeveloperReportTests().report()
+            report['sample_key']=p.sample_key(packets); report['purpose_summary']=[]
+            p.write(out/'report.json',report); p.write(out/'manifest.json',dict(schema=s.RUBRIC,selected=packets))
+            for packet,purpose in zip(packets,purposes):
+                semantic_review=dict(schema=s.RUBRIC,cache_key=packet['cache_key'],reviewer='Synthetic',
+                    purposes=[dict(id=purpose,evidence=[] if purpose=='unknown' else ['m1'],reason='Synthetic')],
+                    ratings={id:dict(status='uncertain',evidence=[],reason='Synthetic') for id in s.IDS})
+                p.write(out/'cache'/(packet['cache_key']+'.json'),semantic_review)
+            p.write(out/'portrait-reviews.json',reviews)
+            result=p.finalize(out,out/'portrait-reviews.json')['portrait']['purpose_context']
+            self.assertEqual(result['retained_sessions'],3)
+            self.assertTrue(all(a['state']=='left' and a['observed_sessions']==3 for a in result['excluding_routine_only_and_unknown']))
+            self.assertTrue(all(a['state']=='insufficient' for a in result['groups']['routine']))
+
     def test_finalize_preserves_base_date_reuses_cache_and_rejects_stale_sample(self):
         root=Path(__file__).resolve().parents[1]/'output/portrait-tests';root.mkdir(parents=True,exist_ok=True)
         with tempfile.TemporaryDirectory(dir=root) as directory:
@@ -123,7 +151,7 @@ class PortraitTests(unittest.TestCase):
                 current=p.finalize(out,out/'reviews.json');self.assertEqual(p.prepare(out,True),[])
             self.assertEqual(current['generated_at'],report['generated_at'])
             shared=(out/'share-profile.json').read_text(encoding='utf-8')
-            self.assertIn('portrait-v1',shared)
+            self.assertIn(p.SCHEMA,shared)
             for secret in ['PRIVATE_NOTE','Private question','Private observation','tones','discoveries']:
                 self.assertNotIn(secret,shared)
                 self.assertNotIn(secret,(out/'developer.html').read_text(encoding='utf-8'))

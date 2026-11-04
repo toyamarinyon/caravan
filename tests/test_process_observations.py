@@ -38,7 +38,7 @@ class ProcessObservationTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def review(self,packet):
-        return dict(schema=s.RUBRIC,cache_key=packet['cache_key'],reviewer='SYNTHETIC TEST; not an AI evaluation',
+        return dict(schema=s.RUBRIC,cache_key=packet['cache_key'],reviewer='SYNTHETIC TEST; not an AI evaluation', purposes=[dict(id='unknown',evidence=[],reason='Synthetic fixture.')],
                     ratings={id:dict(status='uncertain',evidence=[],reason='Synthetic fixture context is insufficient.') for id in s.IDS})
 
     def observation(self,packet,form='retry'):
@@ -60,7 +60,7 @@ class ProcessObservationTests(unittest.TestCase):
         invalid['ratings']['recovery_strategy']['forms'][0]['evidence']=[assistant]
         with self.assertRaisesRegex(ValueError,'human evidence'):s.validate_review(invalid,p)
         invalid=copy.deepcopy(r);invalid['ratings']['ownership']['status']='not_applicable'
-        with self.assertRaises(ValueError):s.validate_review(invalid,p)
+        s.validate_review(invalid,p)
         old=self.review(p);old['schema']='semantic-18-v1'
         with self.assertRaisesRegex(ValueError,'Stale'):s.validate_review(old,p)
 
@@ -83,10 +83,21 @@ class ProcessObservationTests(unittest.TestCase):
         self.assertEqual(next(m for m in profile['metrics'] if m['id']=='model_routing')['forms'],['fixed'])
         self.assertEqual(set(exported),{'id','status','session_rate','forms'})
         self.assertEqual(len(profile['metrics']),38)
-        self.assertEqual(profile['method'],'semantic-38-v3')
+        self.assertEqual(profile['method'],s.RUBRIC)
         if shutil.which('node'):
             test=Path(__file__).with_name('report_ui.cjs')
             subprocess.run(['node',str(test),str(self.out/'index.html'),str(self.out/'share-profile.json')],check=True,capture_output=True)
+
+    def test_purpose_requires_evidence_and_absent_base_opportunity_is_excluded(self):
+        packet=self.packets[0]; review=self.review(packet)
+        review['purposes']=[dict(id='routine', evidence=[], reason='Synthetic routine.')]
+        with self.assertRaisesRegex(ValueError,'human evidence'): s.validate_review(review,packet)
+        user=next(m['id'] for m in packet['messages'] if m['role']=='user')
+        review['purposes'][0]['evidence']=[user]
+        review['ratings']['ownership']['status']='not_applicable'
+        s.validate_review(review,packet)
+        review['purposes'].append(dict(id='unknown',evidence=[],reason='Unclear'))
+        with self.assertRaisesRegex(ValueError,'stand alone'): s.validate_review(review,packet)
 
     def test_process_observations_do_not_change_type_or_evidence_gates(self):
         base=[dict(id=p['id'],count=30,sessions=6,assessed_sessions=12) for p in s.base.PERSPECTIVES]

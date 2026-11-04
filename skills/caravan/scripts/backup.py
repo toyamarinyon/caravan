@@ -7,7 +7,7 @@ import tempfile
 
 SCHEMA = 'caravan-private-backup-v1'
 LIMIT = 8 * 1024 * 1024
-METHODS = {'semantic-18-v1', 'semantic-26-v2', 'semantic-38-v3'}
+METHODS = {'semantic-18-v1', 'semantic-26-v2', 'semantic-38-v3', 'semantic-38-v4'}
 
 
 def validate(value):
@@ -45,7 +45,7 @@ def validate(value):
         if type(report.get(key)) is not int or report[key] < (1 if key == 'days' else 0):
             raise ValueError('Invalid counts')
     if not isinstance(report.get('generated_at'), str): raise ValueError('Missing analysis date')
-    if report.get('portrait') and (not isinstance(report['portrait'],dict) or report['portrait'].get('schema') != 'portrait-v1'):
+    if report.get('portrait') and (not isinstance(report['portrait'],dict) or report['portrait'].get('schema') not in ('portrait-v1', 'portrait-v2')):
         raise ValueError('Unsupported portrait method')
     if 'practices' in report:
         import practices
@@ -66,7 +66,7 @@ LEGACY_FIELDS = ('type_code', 'type_name', 'profile', 'type_status', 'candidate_
 def current_report(report):
     """Keep evidence intact; export only the active classification and current labels."""
     report = copy.deepcopy(report)
-    if report.get('portrait', {}).get('schema') == 'portrait-v1':
+    if report.get('portrait', {}).get('schema') in ('portrait-v1', 'portrait-v2'):
         import journey
         for key in LEGACY_FIELDS:
             report.pop(key, None)
