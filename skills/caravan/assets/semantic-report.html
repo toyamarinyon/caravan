@@ -744,7 +744,7 @@ if(portrait){
   const d=el('details');d.append(el('summary','','根拠を見る · '+a.observed_sessions+'会話'),el('p','small',a.hint));
   if(a.state==='insufficient')d.append(el('p','axis-material','どちらの傾向があるか判断するには、会話の材料が足りません。'));
   else if(check?.changed)d.append(el('p','axis-material','根拠の会話が1件減るだけで判定が変わる場合があります。具体的な場面も確認してみてください。'));
-  d.append(el('p','evidence','左のみ '+(a.counts.left||0)+' / 右のみ '+(a.counts.right||0)+' / 両方 '+(a.counts.both||0)+'会話。どちらも見られない '+(a.counts.not_observed||0)+' / 不明 '+(a.counts.uncertain||0)+'。'));
+  d.append(el('p','evidence','左のみ '+(a.counts.left||0)+' / 右のみ '+(a.counts.right||0)+' / 両方 '+(a.counts.both||0)+'会話。どちらも見られない '+(a.counts.not_observed||0)+' / 不明 '+(a.counts.uncertain||0)+(portrait.schema==='portrait-v2'?' / 該当場面なし '+(a.counts.not_applicable||0):'')+'。'));
   if(a.left_percent!==null)d.append(el('p','evidence','左の傾向に数えた割合は'+a.left_percent+'%です。両方が見られた会話は、左右に半分ずつ数えます。性格や能力の点数ではありません。'));
   for(const f of a.evidence)d.append(el('p','',f.reason));c.append(d);document.getElementById('portrait-axes').append(c);
  }

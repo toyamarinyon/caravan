@@ -129,6 +129,7 @@ def validate(review, packet):
     scene_refs = [r for field in ('situation','human_action','ai_role','response') for r in item[field]['refs']]
     scene_refs += [r for field in ('condition','alternative') for r in decision[field]['refs']]
     scene_refs += [r for step in decision['steps'] for r in step['refs']]
+    if any(r not in messages for r in scene_refs): raise ValueError('Unknown use-case evidence')
     if len({messages[r].get('scene',1) for r in scene_refs}) > 1:
         raise ValueError('A use case cannot join separated scenes')
     previous = -1

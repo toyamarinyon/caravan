@@ -113,3 +113,4 @@ skills/caravan/scripts/kimi.py
 tests/test_kimi.py
 docs/adr/0032-kimi-desktop-history.md
 docs/adr/0033-separate-collaboration-from-scene.md
+docs/adr/0034-purpose-and-separated-scenes.md

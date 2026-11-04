@@ -24,7 +24,7 @@ class Element {
 const ids=Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Element('div')]));
 ids['report-data'].textContent=html.match(/<script id="report-data" type="application\/json">(.*?)<\/script>/s)[1];
 const events={};
-const doc={getElementById:id=>ids[id],createElement:tag=>new Element(tag),querySelector:q=>Object.values(ids).flatMap(e=>e.querySelectorAll(q))[0],addEventListener:(name,handler)=>events[name]=handler};
+const doc={querySelectorAll:q=>[],getElementById:id=>ids[id],createElement:tag=>new Element(tag),querySelector:q=>Object.values(ids).flatMap(e=>e.querySelectorAll(q))[0],addEventListener:(name,handler)=>events[name]=handler};
 let reloads=0;
 const context=vm.createContext({document:doc,Blob,URL,setTimeout,location:{reload:()=>reloads++}});
 vm.runInContext(html.match(/<script>(.*?)<\/script>/s)[1],context);
@@ -35,6 +35,12 @@ async function main(){
     ids['reload-report'].click();assert.equal(reloads,1);
   }
   const rendered=JSON.parse(ids['report-data'].textContent);
+  if(rendered.portrait?.purpose_context){
+    const rows=ids['purpose-context'].children.map(x=>x.textContent);
+    assert.ok(rows.some(x=>x.includes('定型操作')));
+    assert.ok(rows.some(x=>x.includes('感度確認')));
+    assert.ok(rows.some(x=>x.includes('材料不足')));
+  }else assert.equal(ids['purpose-context'].children.length,0);
   const practices=rendered.practices?.items||[];
   assert.equal(ids['practice-cases'].querySelectorAll('.practice').length,practices.filter(p=>p.featured).length);
   assert.equal(ids['practice-more'].querySelectorAll('.practice').length,practices.filter(p=>!p.featured).length);
@@ -228,6 +234,12 @@ async function main(){
   assert.equal(ids.comparison.querySelectorAll('tbody')[0].children.length,profile.metrics.length);
   ids['clear-peers'].click();assert.equal(ids.comparison.querySelector('table'),null);
   ids['peer-files'].files=[{size:4,text:async()=>'{bad'}];await ids['peer-files'].onchange();assert.ok(ids['peer-error'].textContent);
+  if(rendered.portrait?.purpose_context){
+    const legacy=structuredClone(rendered);delete legacy.portrait.purpose_context;delete legacy.purpose_summary;
+    legacy.method='semantic-38-v3';legacy.portrait.schema='portrait-v1';context.legacy=legacy;
+    vm.runInContext('mountReport(legacy)',context);
+    assert.equal(ids['purpose-context'].children.length,0,'old import clears new purpose details');
+  }
   console.log('Report behavior passed: view navigation, observation filters, collapsed details, 38 metrics, 16 styles and versioned sharing.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

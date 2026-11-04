@@ -126,6 +126,9 @@ class PortraitTests(unittest.TestCase):
                 p.write(out/'cache'/(packet['cache_key']+'.json'),semantic_review)
             p.write(out/'portrait-reviews.json',reviews)
             result=p.finalize(out,out/'portrait-reviews.json')['portrait']['purpose_context']
+            import shutil,subprocess
+            if shutil.which('node'):
+                subprocess.run(['node',str(Path(__file__).with_name('report_ui.cjs')),str(out/'index.html'),str(out/'share-profile.json')],check=True,capture_output=True)
             self.assertEqual(result['retained_sessions'],3)
             self.assertTrue(all(a['state']=='left' and a['observed_sessions']==3 for a in result['excluding_routine_only_and_unknown']))
             self.assertTrue(all(a['state']=='insufficient' for a in result['groups']['routine']))

@@ -53,6 +53,15 @@ class PracticeTests(unittest.TestCase):
         review['cache_key']=p.cache_key(packet);review['case']['response'].update(status='user_report',refs=['m3'])
         p.validate(review,packet)
 
+    def test_connected_case_cannot_cross_an_omitted_scene(self):
+        packet=test_portrait.PortraitTests().packet()
+        packet['messages'][0]['scene']=1; packet['messages'][1]['scene']=2
+        review=example(packet)
+        with self.assertRaisesRegex(ValueError,'separated scenes'): p.validate(review,packet)
+        packet['messages'][1]['scene']=1; review=example(packet)
+        review['case']['decision']['steps'][0]['refs']=['missing']
+        with self.assertRaises(ValueError): p.validate(review,packet)
+
     def test_selection_revision_invalidates_cache_but_preserves_saved_results(self):
         packet=test_portrait.PortraitTests().packet(); review=example(packet)
         # A change in editorial/selection rules cannot silently reuse an old review.
