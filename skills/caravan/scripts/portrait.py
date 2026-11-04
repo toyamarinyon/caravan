@@ -195,6 +195,7 @@ def finalize(output,reviews_path=None):
             review=read(path)
         reviews.append(validate(review,packet))
     for packet,review in zip(packets,reviews):write(output/'cache'/('portrait-'+cache_key(packet)+'.json'),review)
+    report.pop('representative', None)  # A new portrait needs its own editorial review.
     report['portrait']=aggregate(packets,reviews)
     if report.get('purpose_summary') is not None:
         import semantic

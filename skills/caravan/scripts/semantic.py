@@ -412,7 +412,7 @@ def finalize(output, reviews_path=None):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command',choices=['notice','prepare','finalize','render','scan-execution','prepare-portrait','finalize-portrait','prepare-practices','finalize-practices','export-backup','restore-backup']);parser.add_argument('--home',type=Path,default=Path.home())
+    parser.add_argument('command',choices=['notice','prepare','finalize','render','scan-execution','prepare-portrait','finalize-portrait','prepare-practices','finalize-practices','prepare-representative','finalize-representative','export-backup','restore-backup']);parser.add_argument('--home',type=Path,default=Path.home())
     parser.add_argument('--backup',type=Path,help='Private backup file to save or restore')
     parser.add_argument('--replace',action='store_true',help='Replace existing result files, keeping before-restore.backup.json')
     parser.add_argument('--output',type=Path,default=Path('output/semantic'));parser.add_argument('--mode',choices=MODES,default='standard')
@@ -424,7 +424,7 @@ def main():
     parser.add_argument('--exclude-session',action='append',default=[],help='Exclude antigravity:<session-id>, kimi:<session-id> or sample:<packet session key> for any source. Repeatable; also reads <output>/excluded-sessions.json.')
     args=parser.parse_args()
     if args.days<1: parser.error('days must be positive')
-    if args.command in ('prepare','scan-execution','prepare-portrait','prepare-practices') and not args.allow_agent_read:
+    if args.command in ('prepare','scan-execution','prepare-portrait','prepare-practices','prepare-representative') and not args.allow_agent_read:
         print(NOTICE)
         parser.error('Explicit consent to the current agent route is required before preparing excerpts.')
     if args.command in ('export-backup','restore-backup'):
@@ -432,6 +432,10 @@ def main():
         if not args.backup: parser.error('--backup is required')
         if args.command=='export-backup':backup.export(args.output,args.backup)
         else:backup.restore(args.backup,args.output,args.replace)
+    elif args.command in ('prepare-representative','finalize-representative'):
+        import representative
+        if args.command=='prepare-representative':representative.prepare(args.output,args.allow_agent_read)
+        else:representative.finalize(args.output,args.reviews)
     elif args.command in ('prepare-practices','finalize-practices'):
         import practices
         if args.command=='prepare-practices':practices.prepare(args.output,args.allow_agent_read)

@@ -41,6 +41,7 @@
 | [0032](0032-kimi-desktop-history.md) | Accepted | Kimiデスクトップ版のWire 1.5から本人の入力と完了したAI回答を読み取る |
 | [0033](0033-separate-collaboration-from-scene.md) | Accepted | AIとの進め方を、根拠となる作業場面と分けて生成する |
 | [0034](0034-purpose-and-separated-scenes.md) | Accepted | 目的と選択機会を区別し、長い会話の離れた場面を同じ予算で読む |
+| [0035](0035-representative-traveler.md) | Accepted | 中間・併用を保ち、同じ抜粋から紹介する旅人を別途選ぶ |
 
 0002〜0008は、この会話と実装を照合した**事後記録**です。記録日は実際の決定日を意味しません。記載した比較対象は判断を説明するため今回整理したもので、過去にすべてを実験したという意味ではありません。
 

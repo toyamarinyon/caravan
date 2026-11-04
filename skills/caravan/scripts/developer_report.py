@@ -43,6 +43,9 @@ def render(report, rubric, extractor, modes):
         '既存観点の具体例と、枠外の候補を区別します。根拠ID・匿名化した観察・本人への問いを必須とし、効果や世界的な新規性は認定しません。口調と発見メモはタイプ計算に入りません。</p>'
         '<p>原文引用・固有名詞・パス・秘密を自由記述に残さないこと。共有JSONには自由記述と口調を含めず、旧方式とは分類方式の版を分けます。</p>')
     if summary:
+        parts['PORTRAIT']+='<h3>今回の会話を紹介する旅人</h3><p>representative-v1は、同じ上限付き抜粋の選択や任せ方を候補と読み比べる独立した編集上の判断です。4軸・分類・元の分析日時は変更しません。一人に絞れない場合は候補を並べます。旧結果の表示更新だけでは判断を追加しません。理由と発言参照は集計共有JSONに含めません。</p>'
+        if report.get('representative'):
+            parts['PORTRAIT']+=f'<p>旅人の検討日時：{h(report["representative"]["generated_at"])}</p>'
         aliases={t['code']:t for t in journey.catalog()}
         parts['PORTRAIT']+='<h3>旅の16タイプ：表示名の対応</h3><p>愛称とイラストは表示用です。判定コード・根拠・評価日時を変更しません。旧方式のタイプには適用しません。</p>'
         parts['PORTRAIT']+=table(['コード','現在の愛称','使い方の要約'],[[h(t['code']),h(aliases.get(t['code'],t)['name']),h(aliases.get(t['code'],{}).get('summary',t['tagline']))] for t in summary['classification']['type_catalog']])

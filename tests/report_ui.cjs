@@ -164,7 +164,11 @@ async function main(){
     assert.equal(ids['portrait-tones'].querySelectorAll('article').length,7);
     assert.equal(ids['portrait-discoveries'].querySelectorAll('article').length,rendered.portrait.discoveries.length);
     const current=rendered.portrait.classification;
-    const art=rendered.journey?.types.find(t=>t.code===current.profile?.code);
+    const art=rendered.journey?.types.find(t=>t.code===(current.profile?.code||rendered.representative?.code));
+    const candidates=!art&&current.evidence_ready?current.candidate_codes:[];
+    assert.equal(ids['journey-candidates'].querySelectorAll('img').length,candidates.length);
+    assert.equal(ids['representative-note'].hidden, !rendered.representative);
+    if(rendered.representative)assert.ok(ids['representative-note'].textContent.includes(rendered.representative.reason));
     assert.equal(ids.name.textContent,art?.name||current.type_name);
     assert.equal(ids['journey-hero'].hidden,!art?.image);
     if(art?.image){

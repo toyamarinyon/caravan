@@ -47,6 +47,9 @@ def validate(value):
     if not isinstance(report.get('generated_at'), str): raise ValueError('Missing analysis date')
     if report.get('portrait') and (not isinstance(report['portrait'],dict) or report['portrait'].get('schema') not in ('portrait-v1', 'portrait-v2')):
         raise ValueError('Unsupported portrait method')
+    if 'representative' in report:
+        import representative
+        representative.validate_saved(report['representative'], report)
     if 'practices' in report:
         import practices
         practices.validate_saved(report['practices'], report)

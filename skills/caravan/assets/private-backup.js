@@ -23,10 +23,21 @@ function validateBackup(value){
  if(!ids||ids.length<18||ids.length>38||new Set(ids).size!==ids.length||ids.some(id=>!known.has(id)))fail();
  if(['sessions','messages','days'].some(k=>!Number.isInteger(r[k])||r[k]<(k==='days'?1:0))||typeof r.generated_at!=='string')fail();
  if(r.portrait&&!['portrait-v1','portrait-v2'].includes(r.portrait.schema))fail();
+ if('representative' in r)validateRepresentative(r.representative,r,fail);
  if('practices' in r)validatePractices(r.practices,r,fail);
  if(['journey','rendered_at','private_backup','execution_audit','material_checks'].some(k=>k in r))fail();
  if(value.execution_audit!==null&&value.execution_audit?.schema!=='execution-events-v1')fail();
  return value;
+}
+function validateRepresentative(v,r,fail){
+ const fields=['schema','sample_key','portrait_key','cache_key','reviewer','generated_at','code','reason','evidence'];
+ const text=(x,n)=>typeof x==='string'&&x.trim().length>0&&[...x].length<=n;
+ if(!v||Object.keys(v).sort().join(',')!==fields.sort().join(',')||v.schema!=='representative-v1'||!r.portrait||v.sample_key!==r.sample_key)fail();
+ if(['portrait_key','cache_key','reviewer','generated_at'].some(k=>!text(v[k],160))||!text(v.reason,500))fail();
+ const c=r.portrait.classification;
+ if(v.code!==null&&(!c.evidence_ready||!c.candidate_codes.includes(v.code)))fail();
+ if(!Array.isArray(v.evidence)||(v.code!==null&&!v.evidence.length))fail();
+ for(const e of v.evidence)if(!e||Object.keys(e).sort().join(',')!=='refs,session'||!text(e.session,160)||!Array.isArray(e.refs)||!e.refs.length||e.refs.some(x=>!text(x,160)))fail();
 }
 function validatePractices(value,report,fail){
  const text=(v,n=400)=>typeof v==='string'&&v.trim().length>0&&[...v].length<=n;

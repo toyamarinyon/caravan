@@ -114,3 +114,8 @@ tests/test_kimi.py
 docs/adr/0032-kimi-desktop-history.md
 docs/adr/0033-separate-collaboration-from-scene.md
 docs/adr/0034-purpose-and-separated-scenes.md
+
+skills/caravan/scripts/representative.py
+skills/caravan/references/representative.md
+tests/test_representative.py
+docs/adr/0035-representative-traveler.md

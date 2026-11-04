@@ -535,6 +535,14 @@ body:has(#view-result:not([hidden])) footer { padding: 8px 0; }
   .type-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   footer { font-size: 9px; }
 }
+.journey-candidates { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; width:min(100%,320px); margin:0 auto 16px; }
+.journey-candidates[hidden] { display:none; }
+.journey-candidates figure { margin:0; min-width:0; }
+.journey-candidates img { display:block; width:100%; height:auto; aspect-ratio:1; object-fit:contain; }
+.journey-candidates figcaption { font-size:13px; line-height:1.5; }
+.summary-candidates { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:24cqw; margin:auto; }
+.summary-candidates img { width:100%; height:auto; aspect-ratio:1; object-fit:contain; }
+@media(max-width:600px) { .summary-candidates { width:240px; } }
 </style>
 </head>
 <body><a id="skip-content" class="skip-link" href="#report-main">本文へ移動</a><section id="summary-mode" class="summary-mode" aria-label="結果を1枚で見る" hidden>
@@ -555,8 +563,9 @@ body:has(#view-result:not([hidden])) footer { padding: 8px 0; }
 <div id="result-overview" class="result-overview">
   <div id="result-copy" class="result-copy">
     <img id="journey-hero" class="journey-hero" alt="" width="512" height="512" hidden>
+    <div id="journey-candidates" class="journey-candidates" hidden></div>
     <div class="result-text">
-      <p id="name"></p><p id="description"></p>
+      <p id="name"></p><p id="description"></p><p id="representative-note" class="context-note" hidden></p>
       <div class="result-meta"><span id="type-status" class="status"></span><div id="type-letters" class="type-letters" aria-hidden="true"></div></div>
       <div class="sample-strip"><span><b id="sessions"></b> 会話</span><span><b id="messages"></b> 発言</span><span>直近 <b id="days"></b> 日</span></div>
       <div class="result-actions"><button id="open-summary" class="quiet-button" type="button" aria-controls="summary-mode" aria-expanded="false">タイプと4軸を1枚で見る</button></div>
@@ -617,7 +626,10 @@ function mountReport(r){
 const portrait=r.portrait,style=portrait?portrait.classification:r,shareMethod=r.method+(portrait?'+'+portrait.schema:'');
 const journey=portrait&&['portrait-v1','portrait-v2'].includes(portrait.schema)?Object.fromEntries((r.journey?.types||[]).map(t=>[t.code,t])):{};
 const displayName=t=>journey[t.code]?.name||t.name;
-const currentJourney=style.profile?journey[style.profile.code]:null;
+const representative=r.representative?.schema==='representative-v1'&&r.representative.sample_key===r.sample_key&&style.evidence_ready&&(!r.representative.code||style.candidate_codes.includes(r.representative.code))?r.representative:null;
+const selectedCode=style.profile?.code||representative?.code;
+const currentJourney=selectedCode?journey[selectedCode]:null;
+const candidateArt=!currentJourney&&style.evidence_ready?(style.candidate_codes||[]).map(code=>journey[code]).filter(t=>t?.image):[];
 const measured=r.perspectives.filter(p=>!p.not_assessed),measuredIds=new Set(measured.map(p=>p.id)),byId=Object.fromEntries(r.perspectives.map(p=>[p.id,p]));
 const put=(id,text)=>document.getElementById(id).textContent=text;
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
@@ -710,6 +722,11 @@ put('name',r.messages?(currentJourney?.name||style.type_name):'分析できる�
 put('description',currentJourney?.summary||(style.profile?style.profile.tagline:style.evidence_ready?'近い候補があります。4軸の根拠を確認してください。':'まだタイプを決める材料が足りません。今回の会話で確認できた使い方をご覧ください。'));
 const hero=document.getElementById('journey-hero');hero.hidden=true;
 if(currentJourney?.image&&r.messages){hero.setAttribute('src',currentJourney.image);hero.setAttribute('alt',currentJourney.alt);hero.hidden=false;document.getElementById('result-copy').className='result-copy has-art';}
+const gallery=document.getElementById('journey-candidates');gallery.replaceChildren();gallery.hidden=!candidateArt.length;gallery.style.gridTemplateColumns=candidateArt.length>4?'repeat(4,minmax(0,1fr))':'repeat(2,minmax(0,1fr))';
+for(const t of candidateArt){const figure=el('figure'),img=el('img'),caption=el('figcaption','',t.name);img.setAttribute('src',t.image);img.setAttribute('alt',t.alt);img.setAttribute('width','512');img.setAttribute('height','512');figure.append(img,caption);gallery.append(figure);}
+if(candidateArt.length)document.getElementById('result-copy').className='result-copy has-art';
+document.getElementById('representative-note').hidden=!representative;
+if(representative){const note=document.getElementById('representative-note');note.hidden=false;note.textContent=(representative.code?'今回の会話を紹介する旅人として選びました。':'今回は一人に絞らず、候補の旅人を並べています。')+' '+representative.reason+' 4軸の中間・併用はそのまま残しています。';}
 for(const letter of (portrait?style.type_code:''))document.getElementById('type-letters').append(el('span','',letter));
 for(const key of ['messages','sessions','days'])put(key,r[key].toLocaleString());
 put('scene-scope',r.method==='semantic-38-v4'?'各会話から最大2つの離れた場面を取り出し、1会話として評価します。場面の間は省略され、実行情報は最初の場面のみです。':'各会話から連続する最大5発言を取り出して判断しています。省略や途中切れがあり、履歴全体を読んだ結果ではありません。');
@@ -866,8 +883,9 @@ document.getElementById('diagnostics').hidden=!(unreadable||malformed);
 
 // Screenshot mode uses saved structured observations only; no new AI diagnosis.
 put('summary-name',document.getElementById('name').textContent);
-put('summary-description',document.getElementById('description').textContent);
-put('summary-status',typeStatus);
+put('summary-description',representative?.code?representative.reason:document.getElementById('description').textContent);
+put('summary-status',(representative?.code?'今回を紹介する旅人 · ':'')+typeStatus);
+if(candidateArt.length){const group=el('div','summary-candidates');for(const t of candidateArt){const img=el('img');img.setAttribute('src',t.image);img.setAttribute('alt',t.name);img.setAttribute('width','512');img.setAttribute('height','512');group.append(img);}document.getElementById('summary-image').append(group);}
 if(currentJourney?.image){
  const img=el('img','summary-art');img.setAttribute('src',currentJourney.image);img.setAttribute('alt',currentJourney.alt);img.setAttribute('width','512');img.setAttribute('height','512');document.getElementById('summary-image').append(img);
 }
